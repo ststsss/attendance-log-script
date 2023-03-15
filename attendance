@@ -1,0 +1,84 @@
+#!/bin/zsh
+
+log_file="./attendance-log.txt"
+
+if [ ! -f $log_file ]; then
+    touch $log_file
+    echo "!!This file was generated automatically by the attendance script. Do not edit it!" >> $log_file
+fi
+
+case $1 in
+    -s) # start time
+        last_line=$(tail -n 1 $log_file)
+        if [[ $last_line == start:* ]]; then
+            while true; do
+                echo "Previous end time not recorded"
+                echo "Please enter the end time (HH:MM):"
+                read start_time
+                if [[ $start_time =~ ^[0-9]{2}:[0-9]{2}$ ]]; then
+                    break
+                fi
+            done
+            date_time=$(echo $last_line | cut -d: -f2)
+            new_line="end:${date_time:0:10}T$start_time:00"
+            echo $new_line >> $log_file
+        else
+            current_datetime=$(date +%Y-%m-%dT%H:%M:%S)
+            new_line="start:${current_datetime}"
+            echo $new_line >> $log_file
+        fi
+        ;;
+    -e) # end time
+        last_line=$(tail -n 1 $log_file)
+        if [[ $last_line == end:* ]]; then
+            while true; do
+                echo "Previous start time not recorded"
+                echo "Please enter the start time (HH:MM):"
+                read end_time
+                if [[ $end_time =~ ^[0-9]{2}:[0-9]{2}$ ]]; then
+                    break
+                fi
+            done
+            date_time=$(echo $last_line | cut -d: -f2)
+            new_line="end:${date_time:0:10}T$end_time:00"
+            echo $new_line >> $log_file
+        else
+            current_datetime=$(date +%Y-%m-%dT%H:%M:%S)
+            new_line="end:${current_datetime}"
+            echo $new_line >> $log_file
+        fi
+        ;;
+    -t) # total time
+        # Get all start and end pairs for the current date
+        current_date=$(date +%Y-%m-%d)
+        start_times=$(grep "start:${current_date}" $log_file | cut -d: -f2 -f3 -f4)
+        end_times=$(grep "end:${current_date}" $log_file | cut -d: -f2 -f3 -f4)
+
+        #Calculate the duration of each pair and output the results
+        total_minutes=0
+        IFS=$'\n'
+        for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
+            start_time=$(echo $i | cut -d' ' -f1)
+            end_time=$(echo $i | cut -d' ' -f2)
+            start_seconds=$(date -j -f "%Y-%m-%dT%H:%M:%S" $start_time +%s)
+            end_seconds=$(date -j -f "%Y-%m-%dT%H:%M:%S" $end_time +%s)
+            duration_seconds=$(( end_seconds - start_seconds ))
+            if [ $duration_seconds -lt 0 ]; then
+                duration_seconds=$(( duration_seconds + 86400 ))
+            fi
+            duration_minutes=$(( duration_seconds / 60 ))
+            total_minutes=$(( total_minutes + duration_minutes ))
+            if [ $duration_minutes -lt 60 ]; then
+                printf "%s→%s→%1dm\n" "${i% *}" "${i#* }" $(( duration_minutes % 60 ))
+            else
+                printf "%s→%s→%dh%1dm\n" "${i% *}" "${i#* }" $(( duration_minutes / 60 )) $(( duration_minutes % 60 ))
+            fi
+        done
+
+# Output the total duration for the day
+        printf "total:%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
+        ;;
+    *)
+        echo "invalud arugument"
+
+esac
