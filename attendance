@@ -7,6 +7,35 @@ if [ ! -f $log_file ]; then
     echo "!!This file was generated automatically by the attendance script. Do not edit it!" >> $log_file
 fi
 
+get_duration_minutes() {
+    start_time=$1
+    end_time=$2
+    start_seconds=$(date -j -f "%Y-%m-%dT%H:%M:%S" $start_time +%s)
+    end_seconds=$(date -j -f "%Y-%m-%dT%H:%M:%S" $end_time +%s)
+    duration_seconds=$(( end_seconds - start_seconds ))
+    if [ $duration_seconds -lt 0 ]; then
+        duration_seconds=$(( duration_seconds + 86400 ))
+    fi
+    duration_minutes=$(( duration_seconds / 60 ))
+    echo $duration_minutes
+}
+
+calculate_total_minutes() {
+    start_times=$1
+    end_times=$2
+    total_minutes=0
+    IFS=$'\n'
+    for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
+        start_time=$(echo $i | cut -d' ' -f1)
+        end_time=$(echo $i | cut -d' ' -f2)
+        if [ -n "$start_time" ] && [ -n "$end_time" ]; then
+            duration_minutes=$(get_duration_minutes $start_time $end_time)
+            total_minutes=$(( total_minutes + duration_minutes ))
+        fi
+    done
+    echo $total_minutes
+}
+
 case $1 in
     -s) # start time
         last_line=$(tail -n 1 $log_file)
@@ -49,34 +78,37 @@ case $1 in
         fi
         ;;
     -t) # total time
-        # Get all start and end pairs for the current date
         current_date=$(date +%Y-%m-%d)
         start_times=$(grep "start:${current_date}" $log_file | cut -d: -f2 -f3 -f4)
         end_times=$(grep "end:${current_date}" $log_file | cut -d: -f2 -f3 -f4)
 
-        #Calculate the duration of each pair and output the results
-        total_minutes=0
-        IFS=$'\n'
-        for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
-            start_time=$(echo $i | cut -d' ' -f1)
-            end_time=$(echo $i | cut -d' ' -f2)
-            start_seconds=$(date -j -f "%Y-%m-%dT%H:%M:%S" $start_time +%s)
-            end_seconds=$(date -j -f "%Y-%m-%dT%H:%M:%S" $end_time +%s)
-            duration_seconds=$(( end_seconds - start_seconds ))
-            if [ $duration_seconds -lt 0 ]; then
-                duration_seconds=$(( duration_seconds + 86400 ))
-            fi
-            duration_minutes=$(( duration_seconds / 60 ))
-            total_minutes=$(( total_minutes + duration_minutes ))
-            if [ $duration_minutes -lt 60 ]; then
-                printf "%s→%s→%1dm\n" "${i% *}" "${i#* }" $(( duration_minutes % 60 ))
-            else
-                printf "%s→%s→%dh%1dm\n" "${i% *}" "${i#* }" $(( duration_minutes / 60 )) $(( duration_minutes % 60 ))
-            fi
-        done
-
-# Output the total duration for the day
+        total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
         printf "total:%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
+        ;;
+    -w) # total time for the past 7 days
+        total_minutes=0
+        for i in {0..6}; do
+            date=$(date -v-${i}d +%Y-%m-%d)
+            start_times=$(grep "start:${date}" $log_file | cut -d: -f2 -f3 -f4)
+            end_times=$(grep "end:${date}" $log_file | cut -d: -f2 -f3 -f4)
+
+            day_total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
+            total_minutes=$(( total_minutes + day_total_minutes ))
+        done
+        printf "total:%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
+        ;;
+    -m) # total time for the specified month
+        if [[ $2 =~ ^[0-9]+$ ]]; then
+            month=$(printf "%02d" $2)
+            current_year=$(date +%Y)
+            start_times=$(grep "start:${current_year}-${month}" $log_file | cut -d: -f2 -f3 -f4)
+            end_times=$(grep "end:${current_year}-${month}" $log_file | cut -d: -f2 -f3 -f4)
+
+            total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
+            printf "total:%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
+        else
+            echo "Invalid month argument. Please enter a valid month number (1-12)."
+        fi
         ;;
     *)
         echo "invalud arugument"
