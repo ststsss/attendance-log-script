@@ -70,7 +70,7 @@ get_weekday_japanese() {
     echo $weekday
 }
 
-while getopts ":otwm:" opt; do
+while getopts ":otwm:r" opt; do
     case $opt in
         o)
             only_total=true
@@ -151,7 +151,12 @@ case $option in
 
         total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
         printf "$current_date($weekday)"
-        printf ":%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
+        if [ $total_minutes -ge 60 ]; then
+            printf ":%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
+        else
+            printf ":%01dm\n" $(( total_minutes % 60 ))
+        fi
+
         if [ "$only_total" = "false" ]; then
             IFS=$'\n'
             for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
@@ -159,7 +164,7 @@ case $option in
                 end_time=$(echo $i | cut -d' ' -f2)
                 start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
                 end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
-                printf "       ・%s~%s\n" "$start_time_only" "$end_time_only"
+                printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
             done
         fi
         ;;
@@ -172,18 +177,26 @@ case $option in
             end_times=$(grep "end:${date}" $log_file | cut -d: -f2 -f3 -f4)
 
             day_total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
-            printf "$date($weekday)"
-            printf ":%dh%01dm\n" $(( day_total_minutes / 60 )) $(( day_total_minutes % 60 ))
+            if [ $day_total_minutes -gt 0 ] || [ "$omit_zero" = "false" ]; then
+                printf "$date($weekday)"
+                if [ $total_minutes -ge 60 ]; then
+                    printf ":%dh%01dm\n" $(( day_total_minutes / 60 )) $(( day_total_minutes % 60 ))
+                else
+                    printf ":%01dm\n" $(( day_total_minutes % 60 ))
+                fi
 
-            if [ "$only_total" = "false" ]; then
-                IFS=$'\n'
-                for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
-                    start_time=$(echo $i | cut -d' ' -f1)
-                    end_time=$(echo $i | cut -d' ' -f2)
-                    start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
-                    end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
-                    printf "       ・%s~%s\n" "$start_time_only" "$end_time_only"
-                done
+                if [ "$only_total" = "false" ]; then
+                    IFS=$'\n'
+                    for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
+                        start_time=$(echo $i | cut -d' ' -f1)
+                        end_time=$(echo $i | cut -d' ' -f2)
+                        start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
+                        end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
+                        if [ -n "$start_time_only" ] && [ -n "$end_time_only" ]; then
+                            printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
+                        fi
+                    done
+                fi
             fi
             total_minutes=$(( total_minutes + day_total_minutes ))
         done
@@ -204,23 +217,31 @@ case $option in
                 end_times=$(grep "end:${date}" $log_file | cut -d: -f2 -f3 -f4)
 
                 day_total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
-                printf "$date($weekday)"
-                printf ":%dh%01dm\n" $(( day_total_minutes / 60 )) $(( day_total_minutes % 60 ))
-                
-                if [ "$only_total" = "false" ]; then
-                    IFS=$'\n'
-                    for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
-                        start_time=$(echo $i | cut -d' ' -f1)
-                        end_time=$(echo $i | cut -d' ' -f2)
-                        start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
-                        end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
-                        printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
-                    done
+                if [ $day_total_minutes -gt 0 ] || [ "$omit_zero" = "false" ]; then
+                    printf "$date($weekday)"
+                    if [ $total_minutes -ge 60 ]; then
+                        printf ":%dh%01dm\n" $(( day_total_minutes / 60 )) $(( day_total_minutes % 60 ))
+                    else
+                        printf ":%01dm\n" $(( day_total_minutes % 60 ))
+                    fi
+                    
+                    if [ "$only_total" = "false" ]; then
+                        IFS=$'\n'
+                        for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
+                            start_time=$(echo $i | cut -d' ' -f1)
+                            end_time=$(echo $i | cut -d' ' -f2)
+                            start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
+                            end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
+                            if [ -n "$start_time_only" ] && [ -n "$end_time_only" ]; then
+                                printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
+                            fi
+                        done
+                    fi
                 fi
                 
                 total_minutes=$(( total_minutes + day_total_minutes ))
             done
-            printf "total:%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
+            printf "合計:%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
         else
             echo "Invalid month argument. Please enter a valid month number (1-12)."
         fi
