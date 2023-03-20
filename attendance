@@ -70,6 +70,21 @@ get_weekday_japanese() {
     echo $weekday
 }
 
+display_individual_times() {
+    start_times=$1
+    end_times=$2
+    IFS=$'\n'
+    for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
+        start_time=$(echo $i | cut -d' ' -f1)
+        end_time=$(echo $i | cut -d' ' -f2)
+        start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
+        end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
+        if [ -n "$start_time_only" ] && [ -n "$end_time_only" ]; then
+            printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
+        fi
+    done
+}
+
 while getopts ":otwm:r" opt; do
     case $opt in
         o)
@@ -158,14 +173,7 @@ case $option in
         fi
 
         if [ "$only_total" = "false" ]; then
-            IFS=$'\n'
-            for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
-                start_time=$(echo $i | cut -d' ' -f1)
-                end_time=$(echo $i | cut -d' ' -f2)
-                start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
-                end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
-                printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
-            done
+            display_individual_times "$start_times" "$end_times"
         fi
         ;;
     w) # total time for the past 7 days
@@ -186,16 +194,7 @@ case $option in
                 fi
 
                 if [ "$only_total" = "false" ]; then
-                    IFS=$'\n'
-                    for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
-                        start_time=$(echo $i | cut -d' ' -f1)
-                        end_time=$(echo $i | cut -d' ' -f2)
-                        start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
-                        end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
-                        if [ -n "$start_time_only" ] && [ -n "$end_time_only" ]; then
-                            printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
-                        fi
-                    done
+                    display_individual_times "$start_times" "$end_times"
                 fi
             fi
             total_minutes=$(( total_minutes + day_total_minutes ))
@@ -226,16 +225,7 @@ case $option in
                     fi
 
                     if [ "$only_total" = "false" ]; then
-                        IFS=$'\n'
-                        for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
-                            start_time=$(echo $i | cut -d' ' -f1)
-                            end_time=$(echo $i | cut -d' ' -f2)
-                            start_time_only=$(echo $start_time | cut -dT -f2 | cut -d: -f1,2)
-                            end_time_only=$(echo $end_time | cut -dT -f2 | cut -d: -f1,2)
-                            if [ -n "$start_time_only" ] && [ -n "$end_time_only" ]; then
-                                printf "   ・%s~%s\n" "$start_time_only" "$end_time_only"
-                            fi
-                        done
+                        display_individual_times "$start_times" "$end_times"
                     fi
                 fi
 
