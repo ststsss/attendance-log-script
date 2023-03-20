@@ -207,7 +207,7 @@ case $option in
             month=$(printf "%02d" $2)
             current_year=$(date +%Y)
             days_in_month=$(cal $month $current_year | awk 'NF {DAYS = $NF}; END {print DAYS}')
-            
+
             total_minutes=0
             for i in $(seq 1 $days_in_month); do
                 day=$(printf "%02d" $i)
@@ -224,7 +224,7 @@ case $option in
                     else
                         printf ":%01dm\n" $(( day_total_minutes % 60 ))
                     fi
-                    
+
                     if [ "$only_total" = "false" ]; then
                         IFS=$'\n'
                         for i in $(paste -d' ' <(echo "$start_times") <(echo "$end_times") | awk '{print $1, $2}'); do
@@ -238,7 +238,7 @@ case $option in
                         done
                     fi
                 fi
-                
+
                 total_minutes=$(( total_minutes + day_total_minutes ))
             done
             printf "合計:%dh%01dm\n" $(( total_minutes / 60 )) $(( total_minutes % 60 ))
