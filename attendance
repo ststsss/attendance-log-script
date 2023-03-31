@@ -1,6 +1,8 @@
 #!/bin/zsh
 
-log_file="./attendance-log.txt"
+script_dir="$(dirname "$(readlink -f "$0")")"
+
+log_file="$script_dir/attendance-log.txt"
 
 if [ ! -f $log_file ]; then
     touch $log_file
@@ -85,7 +87,7 @@ display_individual_times() {
     done
 }
 
-while getopts ":otwm:r" opt; do
+while getopts "setwm:o:r" opt; do
     case $opt in
         o)
             only_total=true
