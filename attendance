@@ -87,7 +87,7 @@ display_individual_times() {
     done
 }
 
-while getopts "setwm:o:r" opt; do
+while getopts ":osetwm:r" opt; do
     case $opt in
         o)
             only_total=true
