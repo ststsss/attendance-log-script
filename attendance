@@ -189,7 +189,7 @@ case $option in
             day_total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
             if [ $day_total_minutes -gt 0 ] || [ "$omit_zero" = "false" ]; then
                 printf "$date($weekday)"
-                if [ $total_minutes -ge 60 ]; then
+                if [ $day_total_minutes -ge 60 ]; then
                     printf ":%dh%01dm\n" $(( day_total_minutes / 60 )) $(( day_total_minutes % 60 ))
                 else
                     printf ":%01dm\n" $(( day_total_minutes % 60 ))
@@ -220,7 +220,7 @@ case $option in
                 day_total_minutes=$(calculate_total_minutes "$start_times" "$end_times")
                 if [ $day_total_minutes -gt 0 ] || [ "$omit_zero" = "false" ]; then
                     printf "$date($weekday)"
-                    if [ $total_minutes -ge 60 ]; then
+                    if [ $day_total_minutes -ge 60 ]; then
                         printf ":%dh%01dm\n" $(( day_total_minutes / 60 )) $(( day_total_minutes % 60 ))
                     else
                         printf ":%01dm\n" $(( day_total_minutes % 60 ))
